@@ -12,14 +12,24 @@
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
 
-
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/export.hpp>
     class Card
     {
     private:
         std::string qst;
         std::string ans;
         int id;
+        friend class boost::serialization::access;
+        template<class Archive>
+        void serialize(Archive & ar, const unsigned int version)
+        {
+            ar & qst;
+            ar & ans;
+            ar & id;
+        }
     public:
+        Card(){};
         Card(std::string const& qst, std::string const& ans, int i)
         {
             this->qst = qst;
@@ -39,12 +49,13 @@
         private:
             friend class boost::serialization::access;
             template<class Archive>
-            void serialize(Archive & ar, const unsigned int& i){};
+            void serialize(Archive & ar, const unsigned int version){};
         public:
             virtual const std::string* getname() const{return nullptr;};
             virtual void setname(std::string &str){};
             virtual void insert(Component* comp){};
             virtual const Component* operator[](int i) const {return nullptr;};
+            Component(){};
             virtual ~Component() = default;
             virtual void save() const{};
             virtual void add(std::string const& qst, std::string const& ans){};
@@ -88,14 +99,16 @@
             int id;
             std::vector<Card*> cards;
             template<class Archive>
-            void serialize(Archive & ar, const unsigned int& i)
+            void serialize(Archive & ar, const unsigned int version)
             {
+                ar & boost::serialization::base_object<Component>(*this);
                 ar & name;
                 ar & id;
-                //ar & cards;
+                ar.register_type(static_cast<Card *>(NULL));
+                ar & cards;
             }
         public:
-
+            int getid(){return id;}
             const std::string* getname() const override{return &name;}
             void add(std::string const& qst, std::string const& ans)
             {
@@ -106,7 +119,7 @@
                 if(i>=cards.size()||i<0) return nullptr;
                 return cards.at(i);
             }
-            Deck()=delete;
+            Deck(){};
             Deck( std::string const &str, int i)
             {
                 name=str;
@@ -121,16 +134,17 @@
             std::string name;
             friend class boost::serialization::access;
             template<class Archive>
-            void serialize(Archive & ar, const unsigned int& i)
+            void serialize(Archive & ar, const unsigned int version)
             {
+                ar & boost::serialization::base_object<Component>(*this);
                 ar & name;
                 if(children.empty()) return;
                 //for(auto it : children) it->serialize(ar, i);
             }
         public:
-            Folder()=delete;
+            Folder(){};
             const std::string* getname() const override{return &name;}
-            explicit Folder(std::string &str){name=str;}
+            Folder(std::string &str){name=str;}
             void insert(Component* comp) override{if(comp!=this) children.insert(comp);}
             const Component* operator[](int i) const override
             {
